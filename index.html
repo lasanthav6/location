@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Location Arrival Alert</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { color: #333; }
+    .card {
+      background: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #007bff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    #popup {
+      display: none;
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      padding: 20px;
+      border: 2px solid #007bff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Location Arrival Alert</h1>
+
+  <div class="card">
+    <label>Target Latitude: <input id="lat" type="number" step="0.000001"></label><br>
+    <label>Target Longitude: <input id="lng" type="number" step="0.000001"></label><br>
+    <label>Radius (meters): <input id="radius" type="number" value="100"></label><br>
+    <button onclick="setTarget()">Set Target</button>
+  </div>
+
+  <div class="card">
+    <p>Current Latitude: <span id="curLat">—</span></p>
+    <p>Current Longitude: <span id="curLng">—</span></p>
+    <p>Distance to Target: <span id="distance">—</span></p>
+    <p>Status: <span id="status">No target set</span></p>
+  </div>
+
+  <div id="popup">
+    <h2>🎉 You have arrived!</h2>
+    <p>You are within the target radius.</p>
+    <button onclick="closePopup()">Close</button>
+  </div>
+
+  <script>
+    let target = null;
+    let arrived = false;
+
+    function setTarget() {
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lng = parseFloat(document.getElementById('lng').value);
+      const radius = parseFloat(document.getElementById('radius').value);
+
+      if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
+        alert("Please enter valid values!");
+        return;
+      }
+      target = { lat, lng, radius };
+      document.getElementById('status').textContent =
+        `Target set at (${lat}, ${lng}) with radius ${radius}m`;
+    }
+
+    function distanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // Earth radius in meters
+      const toRad = x => x * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon/2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function showPopup() {
+      document.getElementById('popup').style.display = 'block';
+    }
+    function closePopup() {
+      document.getElementById('popup').style.display = 'none';
+    }
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.watchPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        document.getElementById('curLat').textContent = lat.toFixed(6);
+        document.getElementById('curLng').textContent = lng.toFixed(6);
+
+        if (target) {
+          const d = distanceMeters(lat, lng, target.lat, target.lng);
+          document.getElementById('distance').textContent = `${Math.round(d)} m`;
+
+          if (d <= target.radius && !arrived) {
+            arrived = true;
+            document.getElementById('status').textContent = "Arrived!";
+            showPopup();
+          } else if (d > target.radius && arrived) {
+            arrived = false;
+            document.getElementById('status').textContent = "Not arrived";
+          }
+        }
+      }, err => {
+        document.getElementById('status').textContent = "Error: " + err.message;
+      }, { enableHighAccuracy: true });
+    } else {
+      alert("Geolocation not supported!");
+    }
+  </script>
+</body>
+</html>

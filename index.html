@@ -2,38 +2,132 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Arrival Counter + Firebase Logger</title>
+  <title>Arrival Counter + Logger</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Google Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
   <style>
-    :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --accent:#22c55e; --danger:#ef4444; --blue:#3b82f6; }
-    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-    header { padding:16px; text-align:center; border-bottom:1px solid #1f2937; }
+    :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --accent:#22c55e; --danger:#ef4444; --blue:#3b82f6; --warn:#f59e0b; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding-bottom: 50px;}
+    header { padding:16px; text-align:center; border-bottom:1px solid #1f2937; position: sticky; top:0; background: var(--bg); z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 20px; }
+    
     main { max-width:900px; margin:20px auto; padding:0 16px; display:grid; gap:16px; }
+    
     .card { background:var(--card); border:1px solid #1f2937; border-radius:12px; padding:20px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center; }
+    
     button, select, input { background:#0b1220; color:var(--text); border:1px solid #1f2937; border-radius:8px; padding:12px; font-size:16px; }
+    button { cursor: pointer; transition: transform 0.1s; }
+    button:active { transform: scale(0.95); }
+    
+    /* Button States */
     button.primary { background:var(--accent); color:#000; font-weight:bold; }
-    button.active { background:var(--blue); }
+    button.secondary { background: #334155; }
+    button.active { background:var(--blue); color: #fff; border-color: var(--blue); } 
+
+    /* Main Counter Styles */
     .counter-card { text-align:center; padding:40px 20px; background:linear-gradient(135deg,#1e293b,#111827); border-radius:16px; }
-    #arrivalCount { font-size:100px; font-weight:900; background:linear-gradient(45deg,#22c55e,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    #arrivalCount { font-size:100px; font-weight:900; background:linear-gradient(45deg,#22c55e,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height: 1; margin-bottom: 20px;}
+    
+    /* Place Selector Styles */
     .place-container { background:#1e293b; padding:20px; border-radius:12px; text-align:center; }
     .place-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:12px; }
     .place-btn { min-width:60px; padding:12px 20px; }
     #placeDisplay { font-size:48px; font-weight:bold; margin:16px 0; color:var(--accent); }
     .type-btns { display:flex; gap:20px; justify-content:center; margin-top:20px; }
     .type-btn { width:120px; padding:16px; font-size:18px; font-weight:bold; }
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:999; }
-    .modal { background:#111827; border-radius:16px; padding:40px; text-align:center; max-width:90%; }
-    .modal h2 { font-size:36px; margin:0 0 16px; }
+
+    /* Extra Options Styles */
+    #extraOptions { margin-top: 20px; border-top: 1px solid #334155; padding-top: 20px; }
+    .option-group { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    .option-group label { color: #94a3b8; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+    .option-group select { width: 100%; max-width: 200px; text-align: center; border-color: var(--blue); }
+    
+    /* Modal Styles */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.95); display:none; flex-direction: column; align-items:center; justify-content:center; z-index:999; }
+    .modal { background:#111827; border: 2px solid var(--accent); border-radius:16px; padding:40px; text-align:center; width:90%; max-width: 400px; }
+    .modal h2 { font-size:36px; margin:0 0 10px; color: var(--text); }
     .show { display:flex; }
-    @media (max-width:640px) { #arrivalCount { font-size:70px; } #placeDisplay { font-size:36px; } }
+    
+    /* Large Count in Modal */
+    #modalCountDisplay {
+        font-size: 100px;
+        font-weight: 900;
+        background: linear-gradient(45deg,#22c55e,#34d399);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1;
+        margin: 10px 0 20px 0;
+    }
+
+    /* History/Records Section */
+    .history-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .history-card { 
+        background: #1e293b; 
+        border-left: 4px solid var(--accent); 
+        padding: 15px; 
+        border-radius: 8px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    }
+    .h-info { display: flex; flex-direction: column; gap: 4px; }
+    .h-count { font-size: 24px; font-weight: bold; color: var(--accent); }
+    .h-place { font-size: 14px; color: #94a3b8; }
+    .h-time { font-size: 12px; color: #64748b; }
+    .h-actions { display: flex; gap: 8px; }
+    
+    /* Icon Buttons */
+    .icon-btn { 
+        padding: 8px; 
+        border-radius: 50%; 
+        width: 40px; 
+        height: 40px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        border: none;
+    }
+    .btn-edit { background: #334155; color: var(--blue); }
+    .btn-del { background: #334155; color: var(--danger); }
+    .material-icons { font-size: 20px; }
+
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge.warn { background: rgba(245, 158, 11, 0.2); color: var(--warn); }
+    .badge.ok { background: rgba(34, 197, 94, 0.2); color: var(--accent); }
+
+    /* ECO MODE OVERLAY */
+    #ecoOverlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 9999;
+        display: none;
+        color: #333;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    #ecoOverlay p { font-size: 14px; margin-top: 20px; }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    @media (max-width:640px) { #arrivalCount, #modalCountDisplay { font-size:70px; } #placeDisplay { font-size:36px; } }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>Arrival Counter + Logger</h1>
-    <div class="status" id="status">Initializing Firebase...</div>
+    <div>
+        <h1>Arrival Counter</h1>
+        <div style="font-size: 12px; color: #94a3b8;" id="status">Initializing...</div>
+    </div>
+    <button id="btnEco" class="secondary" title="Battery Saver (Black Screen)">
+        <span class="material-icons">battery_saver</span>
+    </button>
   </header>
 
   <main>
@@ -64,6 +158,32 @@
         <button class="type-btn secondary" id="keifun">KEIFUN</button>
         <button class="type-btn secondary" id="ooga">OOGA</button>
       </div>
+
+      <!-- EXTRA INPUTS (Dynamic) -->
+      <div id="extraOptions">
+        <!-- OOGA Options -->
+        <div id="oogaOptions" class="option-group" style="display:none;">
+            <label>DAI (Machine)</label>
+            <select id="daiSelect">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+        <!-- KEIFUN Options -->
+        <div id="keifunOptions" class="option-group" style="display:none;">
+            <label>Orosu Bashou</label>
+            <select id="bashouSelect">
+                <option value="ue" selected>ue</option>
+                <option value="1ban">1ban</option>
+                <option value="2ban">2ban</option>
+                <option value="3ban">3ban</option>
+                <option value="4ban">4ban</option>
+                <option value="B iriguchi">B iriguchi</option>
+            </select>
+        </div>
+      </div>
     </section>
 
     <!-- TARGET SETTINGS -->
@@ -72,22 +192,30 @@
       <div class="row">
         <input id="lat" type="number" step="0.000001" placeholder="Latitude">
         <input id="lng" type="number" step="0.000001" placeholder="Longitude">
-        <input id="radius" type="number" value="100" style="width:100px;">
-        <button class="secondary" id="useCurrent">Current</button>
+        <input id="radius" type="number" value="100" style="width:80px;" placeholder="m">
+        <button class="secondary" id="useCurrent" title="Use Live Location"><span class="material-icons">my_location</span></button>
         <button class="primary" id="setTarget">Set</button>
       </div>
-      <p id="targetStatus">No target set</p>
+      <p id="targetStatus" style="text-align: center; color: #94a3b8; font-size: 14px;">No target set</p>
     </section>
 
     <!-- LIVE LOCATION -->
     <section class="card">
       <h3>Live Location</h3>
-      <div class="row">
+      <div class="row" style="font-family: monospace; font-size: 14px;">
         <div>Lat: <span id="curLat">--</span></div>
         <div>Lng: <span id="curLng">--</span></div>
         <div>Acc: <span id="curAcc">--</span></div>
       </div>
-      <p>Distance: <span id="distance">--</span> | Status: <span id="arrivalBadge" class="badge warn">Not arrived</span></p>
+      <p style="text-align: center;">Distance: <span id="distance">--</span> | <span id="arrivalBadge" class="badge warn">Not arrived</span></p>
+    </section>
+
+    <!-- HISTORY / RECORDS SECTION -->
+    <section class="card">
+        <h3>Today's Records</h3>
+        <div id="historyList" class="history-list">
+            <div style="text-align:center; padding:20px; color:#64748b;">Loading records...</div>
+        </div>
     </section>
 
   </main>
@@ -96,12 +224,52 @@
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal">
       <h2>ARRIVED!</h2>
-      <p id="modalPlace">Place: --</p>
-      <p id="modalType">Type: --</p>
+      <div id="modalCountDisplay">0</div>
+      
+      <p id="modalPlace" style="font-size: 24px; font-weight: bold; margin-bottom: 5px;">Place: --</p>
+      
+      <!-- POPUP CONTROLS (NEW) -->
+      <div id="modalControls" style="margin-bottom: 10px;">
+        
+        <!-- OOGA Control in Modal -->
+        <div id="modalDaiWrapper" style="display:none; flex-direction:column; gap:5px; align-items:center;">
+             <label style="color:#94a3b8; font-size:12px;">DAI</label>
+             <select id="modalDaiSelect" style="padding: 8px; font-size: 16px; border-color: var(--accent);">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+             </select>
+        </div>
+
+        <!-- KEIFUN Control in Modal -->
+        <div id="modalBashouWrapper" style="display:none; flex-direction:column; gap:5px; align-items:center;">
+             <label style="color:#94a3b8; font-size:12px;">BASHOU</label>
+             <select id="modalBashouSelect" style="padding: 8px; font-size: 16px; border-color: var(--accent);">
+                <option value="ue">ue</option>
+                <option value="1ban">1ban</option>
+                <option value="2ban">2ban</option>
+                <option value="3ban">3ban</option>
+                <option value="4ban">4ban</option>
+                <option value="B iriguchi">B iriguchi</option>
+             </select>
+        </div>
+
+      </div>
+
+      <p id="modalType" style="color: #94a3b8; margin: 0;">Type: --</p>
+      
+      <button onclick="document.getElementById('modalBackdrop').classList.remove('show')" style="margin-top:20px; width:100%;">Close</button>
     </div>
   </div>
 
-  <!-- Firebase + NoSleep -->
+  <!-- ECO MODE OVERLAY -->
+  <div id="ecoOverlay">
+      <span class="material-icons" style="font-size: 64px; color: #222;">battery_saver</span>
+      <p>Tracking Active in Background Mode<br>Double Tap to Unlock</p>
+  </div>
+
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -109,9 +277,30 @@
   <script>
     // Prevent screen sleep
     const noSleep = new NoSleep();
+    
+    // Eco Mode Logic
+    const ecoBtn = document.getElementById('btnEco');
+    const ecoOverlay = document.getElementById('ecoOverlay');
+    
+    ecoBtn.onclick = () => {
+        noSleep.enable();
+        ecoOverlay.style.display = 'flex';
+    };
+
+    let lastTap = 0;
+    ecoOverlay.onclick = (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+            ecoOverlay.style.display = 'none';
+        }
+        lastTap = currentTime;
+    };
+
     document.addEventListener('click', () => { noSleep.enable(); }, { once: true });
 
-    // Firebase Config (ඔයාගේ project එක)
+
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyCU0m583I4iMI5hOAwX33PF-Em9Av4Nz4Y",
       authDomain: "signal-b293d.firebaseapp.com",
@@ -129,15 +318,17 @@
     let target = null;
     let arrived = false;
     let watchId = null;
-    let currentPlace = null;  // e.g. "A7"
-    let currentType = null;  // "KEIFUN" or "OOGA"
+    let currentPlace = null; 
+    let currentType = null; 
+    let currentLogKey = null; // To track the current entry for popup edits
+    let lastKnownPosition = null;
     let arrivalCount = parseInt(localStorage.getItem('arrivalCount') || '0');
 
     const el = id => document.getElementById(id);
     el('arrivalCount').textContent = arrivalCount;
 
-    // Beep sound
-    const beep = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='); // short beep
+    // --- BEEP SOUND ---
+    const beep = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='); 
     function playBeep() {
       beep.currentTime = 0;
       beep.play();
@@ -145,7 +336,7 @@
       setTimeout(() => beep.play(), 600);
     }
 
-    // Update place display & dropdown
+    // --- UI HELPERS ---
     function updatePlace(letter) {
       const ranges = { A:12, B:8, C:3, E:6 };
       const select = el('numberSelect');
@@ -158,40 +349,150 @@
       select.onchange = () => {
         currentPlace = letter + select.value;
         el('placeDisplay').textContent = currentPlace;
-        // Reset type buttons when new place selected
         el('keifun').classList.remove('active');
         el('ooga').classList.remove('active');
         currentType = null;
+        updateTypeButtons();
       };
       select.value = 1;
       currentPlace = letter + '1';
       el('placeDisplay').textContent = currentPlace;
     }
 
-    // Type buttons
     el('keifun').onclick = () => { currentType = 'KEIFUN'; updateTypeButtons(); };
     el('ooga').onclick = () => { currentType = 'OOGA'; updateTypeButtons(); };
+
     function updateTypeButtons() {
+      // Button Styles
       el('keifun').classList.toggle('active', currentType === 'KEIFUN');
       el('ooga').classList.toggle('active', currentType === 'OOGA');
+
+      // Toggle Options Visibility (Main Screen)
+      el('oogaOptions').style.display = currentType === 'OOGA' ? 'block' : 'none';
+      el('keifunOptions').style.display = currentType === 'KEIFUN' ? 'block' : 'none';
     }
 
-    // Save to Firebase
+    // --- FIREBASE LOGIC ---
     function logArrival() {
       if (!currentPlace || !currentType) return;
+      
+      // Get Extra info from Main Screen Controls
+      let extraInfo = '';
+      if (currentType === 'OOGA') {
+        extraInfo = 'DAI: ' + el('daiSelect').value;
+      } else if (currentType === 'KEIFUN') {
+        extraInfo = 'Bashou: ' + el('bashouSelect').value;
+      }
+
       const data = {
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString('en-CA'),
         time: new Date().toLocaleTimeString(),
         place: currentPlace,
         type: currentType,
+        extra: extraInfo,
         count: arrivalCount
       };
-      db.ref('arrivals').push(data);
-      console.log('Saved to Firebase:', data);
+      
+      const newRef = db.ref('arrivals').push(data);
+      currentLogKey = newRef.key; // Store key to update it later from popup
+      return extraInfo;
     }
 
-    // Haversine
+    // --- POPUP INTERACTION LOGIC ---
+    // Update Firebase when Modal Dropdowns are changed
+    function updateLogFromModal() {
+        if (!currentLogKey) return;
+        
+        let extraInfo = '';
+        if (currentType === 'OOGA') {
+            const val = el('modalDaiSelect').value;
+            extraInfo = 'DAI: ' + val;
+            // Sync back to main screen so it remembers next time
+            el('daiSelect').value = val; 
+        } else if (currentType === 'KEIFUN') {
+            const val = el('modalBashouSelect').value;
+            extraInfo = 'Bashou: ' + val;
+            // Sync back to main screen
+            el('bashouSelect').value = val;
+        }
+
+        db.ref('arrivals/' + currentLogKey).update({ extra: extraInfo });
+    }
+
+    el('modalDaiSelect').onchange = updateLogFromModal;
+    el('modalBashouSelect').onchange = updateLogFromModal;
+
+
+    // --- HISTORY LISTENER (TODAY ONLY) ---
+    const historyRef = db.ref('arrivals');
+    
+    historyRef.limitToLast(100).on('value', snapshot => {
+        const list = el('historyList');
+        list.innerHTML = ''; 
+        
+        if (!snapshot.exists()) {
+            list.innerHTML = '<div style="text-align:center; color:#64748b;">No records found</div>';
+            return;
+        }
+
+        const items = [];
+        const todayStr = new Date().toLocaleDateString('en-CA');
+
+        snapshot.forEach(child => {
+            const val = child.val();
+            // FILTER: ONLY SHOW TODAY'S RECORDS
+            if (val.date === todayStr) {
+                items.push({ key: child.key, ...val });
+            }
+        });
+        
+        if (items.length === 0) {
+            list.innerHTML = '<div style="text-align:center; color:#64748b;">No records for today</div>';
+            return;
+        }
+
+        // Show newest first
+        items.reverse().forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'history-card';
+            const displayTime = item.time || item.timestamp.split('T')[1].split('.')[0];
+            const extraText = item.extra ? `<br><span style="font-size:12px; color:var(--blue);">${item.extra}</span>` : '';
+
+            card.innerHTML = `
+                <div class="h-info">
+                    <div class="h-count">#${item.count}</div>
+                    <div class="h-place">${item.place} (${item.type}) ${extraText}</div>
+                    <div class="h-time">${displayTime}</div>
+                </div>
+                <div class="h-actions">
+                    <button class="icon-btn btn-edit" onclick="editRecord('${item.key}', '${item.place}', ${item.count})">
+                        <span class="material-icons">edit</span>
+                    </button>
+                    <button class="icon-btn btn-del" onclick="deleteRecord('${item.key}')">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    });
+
+    // Delete
+    window.deleteRecord = function(key) {
+        if(confirm('Delete this record?')) db.ref('arrivals').child(key).remove();
+    }
+
+    // Edit
+    window.editRecord = function(key, oldPlace, oldCount) {
+        const newCount = prompt("Edit Count:", oldCount);
+        if(newCount === null) return;
+        const newPlace = prompt("Edit Place (e.g. A5):", oldPlace);
+        if(newPlace === null) return;
+        db.ref('arrivals').child(key).update({ count: parseInt(newCount), place: newPlace });
+    }
+
+    // --- LOCATION LOGIC ---
     function distanceMeters(a, b) {
       const toRad = v => v * Math.PI / 180;
       const R = 6371000;
@@ -202,8 +503,8 @@
       return R * c;
     }
 
-    // Location updates
     function onPosition(pos) {
+      lastKnownPosition = pos;
       const c = pos.coords;
       el('curLat').textContent = c.latitude.toFixed(6);
       el('curLng').textContent = c.longitude.toFixed(6);
@@ -216,6 +517,7 @@
       const inside = dist <= target.radius;
 
       if (inside && !arrived) {
+        // --- ENTERED ZONE ---
         arrived = true;
         arrivalCount++;
         localStorage.setItem('arrivalCount', arrivalCount);
@@ -224,21 +526,40 @@
         el('arrivalBadge').classList.replace('warn','ok');
 
         playBeep();
+        
+        // Log to Firebase
+        logArrival();
+
+        // Setup Modal UI
+        el('modalCountDisplay').textContent = arrivalCount;
         el('modalPlace').textContent = 'Place: ' + (currentPlace || '--');
         el('modalType').textContent = 'Type: ' + (currentType || '--');
+        
+        // Show correct dropdown in Modal and Sync value
+        el('modalDaiWrapper').style.display = 'none';
+        el('modalBashouWrapper').style.display = 'none';
+
+        if (currentType === 'OOGA') {
+            el('modalDaiWrapper').style.display = 'flex';
+            el('modalDaiSelect').value = el('daiSelect').value; // Sync from main
+        } else if (currentType === 'KEIFUN') {
+            el('modalBashouWrapper').style.display = 'flex';
+            el('modalBashouSelect').value = el('bashouSelect').value; // Sync from main
+        }
+
         el('modalBackdrop').classList.add('show');
 
-        logArrival(); // Save to Firebase
-
       } else if (!inside && arrived) {
+        // --- LEFT ZONE (Auto Close) ---
         arrived = false;
         el('arrivalBadge').textContent = 'Not arrived';
         el('arrivalBadge').classList.replace('ok','warn');
-        el('modalBackdrop').classList.remove('show'); // Auto close popup
+        // Close Popup automatically
+        el('modalBackdrop').classList.remove('show');
       }
     }
 
-    // Setup
+    // --- EVENT LISTENERS ---
     document.querySelectorAll('.place-btn').forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll('.place-btn').forEach(b => b.classList.remove('primary'));
@@ -253,29 +574,43 @@
       const rad = parseFloat(el('radius').value) || 100;
       if (isNaN(lat) || isNaN(lng)) return alert('Invalid coordinates');
       target = { lat, lng, radius: rad };
-      el('targetStatus').textContent = `Target: ${lat.toFixed(6)}, ${lng.toFixed(6)} ±${rad}m`;
+      el('targetStatus').textContent = `Target set: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     };
 
     el('useCurrent').onclick = () => {
-      navigator.geolocation.getCurrentPosition(p => {
-        el('lat').value = p.coords.latitude.toFixed(6);
-        el('lng').value = p.coords.longitude.toFixed(6);
-        el('setTarget').click();
-      });
+      if (lastKnownPosition) {
+        el('lat').value = lastKnownPosition.coords.latitude.toFixed(6);
+        el('lng').value = lastKnownPosition.coords.longitude.toFixed(6);
+      } else {
+        navigator.geolocation.getCurrentPosition(p => {
+          el('lat').value = p.coords.latitude.toFixed(6);
+          el('lng').value = p.coords.longitude.toFixed(6);
+        });
+      }
     };
 
-    el('increment').onclick = () => { arrivalCount++; localStorage.setItem('arrivalCount', arrivalCount); el('arrivalCount').textContent = arrivalCount; };
-    el('decrement').onclick = () => { if (arrivalCount > 0) { arrivalCount--; localStorage.setItem('arrivalCount', arrivalCount); el('arrivalCount').textContent = arrivalCount; }};
+    el('increment').onclick = () => { 
+        arrivalCount++; 
+        localStorage.setItem('arrivalCount', arrivalCount); 
+        el('arrivalCount').textContent = arrivalCount; 
+    };
+    el('decrement').onclick = () => { 
+        if (arrivalCount > 0) { 
+            arrivalCount--; 
+            localStorage.setItem('arrivalCount', arrivalCount); 
+            el('arrivalCount').textContent = arrivalCount; 
+        }
+    };
 
-    // Start tracking
+    // Init
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(onPosition, err => {
         el('status').textContent = 'Location error: ' + err.message;
       }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
-      el('status').textContent = 'Tracking active | Screen stays ON | Firebase connected';
+      el('status').textContent = 'Tracking active • DB Connected';
     }
 
-    // Default place A
+    // Select default
     document.querySelector('[data-place="A"]').click();
   </script>
 </body>
